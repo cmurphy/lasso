@@ -21,6 +21,7 @@ type gvkWatcher struct {
 	toSync   int32
 	client   discovery.DiscoveryInterface
 	callback gvksCallback
+	crds     controller.SharedController
 }
 
 func watchGVKS(ctx context.Context,
@@ -40,6 +41,7 @@ func watchGVKS(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	h.crds = crdController
 
 	apiServiceController, err := factory.ForKind(schema.GroupVersionKind{
 		Group:   "apiregistration.k8s.io",
@@ -68,6 +70,7 @@ func (g *gvkWatcher) queueRefresh() {
 		if err := g.refreshAll(); err != nil {
 			klog.Errorf("failed to sync schemas: %v", err)
 			atomic.StoreInt32(&g.toSync, 1)
+			g.crds.EnqueueAfter("", "", 10*time.Second)
 		}
 	}()
 }
